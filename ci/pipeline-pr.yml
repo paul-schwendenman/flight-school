@@ -1,0 +1,46 @@
+resource_types:
+- name: pull-request
+  type: docker-image
+  source:
+    repository: jtarchie/pr
+
+resources:
+- name: flight-school
+  type: pull-request
+  source:
+    access_token: {{github-access-token}}
+    private_key: {{github-private-key}}
+    repo: paul-schwendenman/flight-school
+
+jobs:
+- name: repo-pr
+  plan:
+  - get: flight-school
+    trigger: true
+  - put: flight-school
+    params:
+      path: flight-school
+      status: pending
+  - task: run tests
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ruby
+          tag: 2.3.0
+      run:
+        path: ./flight-school/ci/test.sh
+      inputs:
+      - name: flight-school
+        path: ""
+    on_success:
+      put: flight-school
+      params:
+        path: flight-school
+        status: success
+    on_failure:
+      put: flight-school
+      params:
+        path: flight-school
+        status: failure
